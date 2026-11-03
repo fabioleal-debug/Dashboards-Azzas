@@ -1,1 +1,471 @@
-index
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Evolução Mono</title>
+    <style>
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body, canvas {
+    /* Regras do contrato de interface: Nitidez e fluidez */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    background-color: #F4F6F9;
+    color: #333;
+}
+
+.painel-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    padding: 16px;
+    gap: 16px;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* Cabeçalho */
+.cabecalho {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #F4F6F9;
+    padding: 10px 16px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: #fff;
+}
+
+.cabecalho h1 {
+    font-weight: 500;
+    color: #2b3a4a;
+    font-size: clamp(1.2rem, 2vw, 1.8rem);
+}
+
+.logo-area {
+    display: flex;
+    align-items: center;
+    color: #2b3a4a;
+}
+
+.logo-azzas { font-weight: 700; font-size: 1.2rem; }
+.logo-ano { font-size: 0.7rem; margin-left: 2px; margin-top: 8px; font-weight: 600; }
+.logo-divider { width: 1px; height: 30px; background-color: #ccc; margin: 0 12px; }
+.logo-sub { font-size: 0.65rem; font-weight: 600; line-height: 1.1; color: #555;}
+
+/* Cards e Layout Flex */
+.kpi-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.kpi-row {
+    display: flex;
+    align-items: stretch;
+    gap: 10px;
+}
+
+.kpi-badge {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    text-align: center;
+    background: #fff;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    padding: 0 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.kpi-cards {
+    display: flex;
+    flex: 1;
+    gap: 10px;
+}
+
+.card {
+    background: #fff;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 16px;
+    flex: 1;
+    position: relative;
+}
+
+.card-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #555;
+    margin-bottom: 8px;
+}
+
+.card-value {
+    font-size: clamp(1.4rem, 2vw, 1.8rem);
+    color: #2b3a4a;
+}
+
+.middle-charts {
+    display: flex;
+    gap: 16px;
+    height: 30vh;
+}
+
+.chart-card {
+    padding-top: 36px; 
+}
+
+.chart-title {
+    font-weight: 700;
+    font-size: 0.8rem;
+    color: #2b3a4a;
+    text-transform: uppercase;
+}
+
+.center-top {
+    position: absolute;
+    top: 12px;
+    width: 100%;
+    text-align: center;
+}
+
+.abs-top-left {
+    position: absolute;
+    top: 12px;
+    left: 16px;
+    font-size: 0.65rem;
+    color: #777;
+}
+
+/* Regras contratuais: min-height: 0 e flex: 1 para os canvas */
+.canvas-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.gauge-wrapper, .doughnut-wrapper {
+    position: relative;
+    max-width: 350px;
+}
+
+.gauge-label {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: clamp(1.8rem, 3vw, 2.5rem);
+    color: #2b3a4a;
+}
+
+.gauge-min { position: absolute; bottom: 0; left: 10%; font-size: 0.65rem; font-weight: 600; }
+.gauge-max { position: absolute; bottom: 0; right: 10%; font-size: 0.65rem; font-weight: 600; }
+
+.doughnut-center-label {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: clamp(1.2rem, 2vw, 1.6rem);
+    font-weight: 600;
+    color: #2b3a4a;
+}
+
+.bar-section {
+    height: 25vh;
+}
+
+.line-section {
+    flex: 1;
+    min-height: 25vh;
+}
+</style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+
+                    <script>
+                    /* DADOS CRAVADOS HARDCODED NA HORA DA PUBLICAÇÃO */
+                    window.pywebview = {
+                        api: {
+                            get_areas: async () => ({"labels": ["TR", "BC", "AC"], "valores": [100.0, 99.48, 70.58]}),
+                get_enderecos: async () => ({"caotico": 5, "mono": 39, "total_formatado": "44 mil"}),
+                get_evolucao_geral: async () => ({"valor": 77.72, "restante": 22.28}),
+                get_kpis: async () => ({"ac": {"total": "466 Mil", "mono": "329 Mil", "perc": "70,58%"}, "bc": {"total": "307 Mil", "mono": "306 Mil", "perc": "99,48%"}}),
+                get_timeline: async () => ({"meses": ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"], "valores": [57.13, 63.44, 66.47, 67.2, 56.14, 61.58, 63.94, 67.6, 66.37, 60.84, 58.04, 53.9]}),
+                load_cache: async () => ({"kpis": {"ac": {"total": "466 Mil", "mono": "329 Mil", "perc": "70,58%"}, "bc": {"total": "307 Mil", "mono": "306 Mil", "perc": "99,48%"}}, "evolucao": {"valor": 77.72, "restante": 22.28}, "enderecos": {"caotico": 5, "mono": 39, "total_formatado": "44 mil"}, "areas": {"labels": ["TR", "BC", "AC"], "valores": [100.0, 99.48, 70.58]}, "timeline": {"meses": ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"], "valores": [57.13, 63.44, 66.47, 67.2, 56.14, 61.58, 63.94, 67.6, 66.37, 60.84, 58.04, 53.9]}}),
+                update_data: async () => ({ success: false, message: 'Visualização web estática.' })
+                        }
+                    };
+                    setTimeout(() => window.dispatchEvent(new Event('pywebviewready')), 200);
+                    </script>
+                    
+</head>
+<body>
+    <div class="painel-wrapper">
+        
+        <header class="cabecalho">
+            <h1>Evolução Mono</h1>
+            <div class="logo-area">
+                <span class="logo-azzas">AZZAS</span>
+                <span class="logo-ano">2154</span>
+                <div class="logo-divider"></div>
+                <span class="logo-sub">FASHION &<br>LIFESTYLE</span>
+            </div>
+        </header>
+
+        
+        <section class="kpi-section">
+            <div class="kpi-row">
+                <div class="kpi-badge">AC</div>
+                <div class="kpi-cards">
+                    <div class="card"><span class="card-title">ESTOQUE TOTAL</span><span class="card-value" id="ac-total">-</span></div>
+                    <div class="card"><span class="card-title">QUANTIDADE PEÇAS MONO</span><span class="card-value" id="ac-mono">-</span></div>
+                    <div class="card"><span class="card-title">% ESTOQUE MONO</span><span class="card-value" id="ac-perc">-</span></div>
+                </div>
+            </div>
+            <div class="kpi-row">
+                <div class="kpi-badge">BC</div>
+                <div class="kpi-cards">
+                    <div class="card"><span class="card-title">ESTOQUE TOTAL</span><span class="card-value" id="bc-total">-</span></div>
+                    <div class="card"><span class="card-title">QUANTIDADE PEÇAS MONO</span><span class="card-value" id="bc-mono">-</span></div>
+                    <div class="card"><span class="card-title">% ESTOQUE MONO</span><span class="card-value" id="bc-perc">-</span></div>
+                </div>
+            </div>
+        </section>
+
+        
+        <section class="middle-charts">
+            <div class="card chart-card flex-center">
+                <span class="chart-title abs-top-left">% ESTOQUE MONO</span>
+                <span class="chart-title center-top">EVOLUÇÃO ESTOQUE MONO</span>
+                <div class="canvas-wrapper gauge-wrapper">
+                    <canvas id="gaugeChart"></canvas>
+                    <div class="gauge-label" id="gauge-val">-</div>
+                    <span class="gauge-min">0,00%</span>
+                    <span class="gauge-max">100,00%</span>
+                </div>
+            </div>
+            <div class="card chart-card">
+                <span class="chart-title center-top">QUANTIDADE ENDEREÇOS</span>
+                <div class="canvas-wrapper doughnut-wrapper">
+                    <canvas id="enderecosChart"></canvas>
+                    <div class="doughnut-center-label" id="end-total">-</div>
+                </div>
+            </div>
+        </section>
+
+        
+        <section class="card chart-card bar-section">
+            <span class="chart-title center-top">% ESTOQUE MONO POR AREA</span>
+            <div class="canvas-wrapper">
+                <canvas id="areasChart"></canvas>
+            </div>
+        </section>
+
+        
+        <section class="card chart-card line-section">
+            <span class="chart-title center-top">LINHA DO TEMPO ESTOQUE MONO</span>
+            <div class="canvas-wrapper">
+                <canvas id="timelineChart"></canvas>
+            </div>
+        </section>
+    </div>
+
+    <script>
+// Registra o plugin de DataLabels globalmente
+Chart.register(ChartDataLabels);
+
+// Regra do contrato: Densidade nativa
+Chart.defaults.devicePixelRatio = window.devicePixelRatio || 1;
+Chart.defaults.font.family = "'Segoe UI', sans-serif";
+Chart.defaults.color = "#333";
+
+// Plugin customizado para desenhar a linha pontilhada de 85% no gráfico de barras
+const targetLinePlugin = {
+    id: 'targetLine',
+    beforeDraw: (chart) => {
+        if (chart.config.options.plugins.targetLine) {
+            const ctx = chart.ctx;
+            const xAxis = chart.scales.x;
+            const yAxis = chart.scales.y;
+            const value = chart.config.options.plugins.targetLine.value;
+            
+            const xPos = xAxis.getPixelForValue(value);
+            
+            ctx.save();
+            ctx.beginPath();
+            ctx.setLineDash([4, 4]);
+            ctx.moveTo(xPos, yAxis.top - 10);
+            ctx.lineTo(xPos, yAxis.bottom + 10);
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#1F4E79';
+            ctx.stroke();
+            
+            ctx.fillStyle = '#1F4E79';
+            ctx.textAlign = 'center';
+            ctx.font = 'bold 11px Segoe UI';
+            ctx.fillText(value + '%', xPos, yAxis.top - 15);
+            ctx.restore();
+        }
+    }
+};
+Chart.register(targetLinePlugin);
+
+// Gatilho contratual de inicialização
+window.addEventListener('pywebviewready', async () => {
+    const data = await window.pywebview.api.load_cache();
+    renderizarDashboard(data);
+});
+
+function renderizarDashboard(dados) {
+    // 1. Preencher KPIs
+    document.getElementById('ac-total').innerText = dados.kpis.ac.total;
+    document.getElementById('ac-mono').innerText = dados.kpis.ac.mono;
+    document.getElementById('ac-perc').innerText = dados.kpis.ac.perc;
+    
+    document.getElementById('bc-total').innerText = dados.kpis.bc.total;
+    document.getElementById('bc-mono').innerText = dados.kpis.bc.mono;
+    document.getElementById('bc-perc').innerText = dados.kpis.bc.perc;
+
+    // 2. Gráfico Gauge (Evolução Estoque Mono)
+    document.getElementById('gauge-val').innerText = dados.evolucao.valor.toFixed(2).replace('.', ',') + '%';
+    new Chart(document.getElementById('gaugeChart'), {
+        type: 'doughnut',
+        data: {
+            datasets: [{
+                data: [dados.evolucao.valor, dados.evolucao.restante],
+                backgroundColor: ['#1F4E79', '#D9D9D9'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            circumference: 180,
+            rotation: -90,
+            cutout: '75%',
+            maintainAspectRatio: false,
+            plugins: { tooltip: { enabled: false }, datalabels: { display: false } }
+        }
+    });
+
+    // 3. Gráfico de Rosca (Endereços)
+    document.getElementById('end-total').innerText = dados.enderecos.total_formatado;
+    new Chart(document.getElementById('enderecosChart'), {
+        type: 'doughnut',
+        data: {
+            labels: ['CAOTICO', 'MONO'],
+            datasets: [{
+                data: [dados.enderecos.caotico, dados.enderecos.mono],
+                backgroundColor: ['#C00000', '#1F4E79'],
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            cutout: '70%',
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                datalabels: {
+                    color: '#555',
+                    font: { weight: 'bold', size: 10 },
+                    formatter: (value, ctx) => {
+                        return ctx.chart.data.labels[ctx.dataIndex] + '\n' + value + ' mil';
+                    },
+                    anchor: 'end',
+                    align: 'end',
+                    offset: 5
+                }
+            },
+            layout: { padding: 30 }
+        }
+    });
+
+    // 4. Gráfico de Barras Horizontais (Por Área)
+    new Chart(document.getElementById('areasChart'), {
+        type: 'bar',
+        data: {
+            labels: dados.areas.labels,
+            datasets: [{
+                data: dados.areas.valores,
+                backgroundColor: (ctx) => ctx.raw < 80 ? '#C00000' : '#1F4E79',
+                maxBarThickness: 30 // Regra Contratual para adaptabilidade
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            maintainAspectRatio: false,
+            scales: {
+                x: { max: 100, display: false },
+                y: { grid: { display: false }, ticks: { font: { weight: 'bold', size: 9 } } }
+            },
+            plugins: {
+                legend: { display: false },
+                targetLine: { value: 85 },
+                datalabels: {
+                    color: '#555',
+                    anchor: 'end',
+                    align: 'right',
+                    formatter: v => v.toFixed(2).replace('.', ',') + '%'
+                }
+            },
+            layout: { padding: { right: 40, top: 15 } }
+        }
+    });
+
+    // 5. Gráfico de Linha (Timeline)
+    new Chart(document.getElementById('timelineChart'), {
+        type: 'line',
+        data: {
+            labels: dados.timeline.meses,
+            datasets: [{
+                data: dados.timeline.valores,
+                borderColor: '#1F4E79',
+                backgroundColor: '#1F4E79',
+                borderWidth: 2,
+                tension: 0.4,
+                pointRadius: 0,
+                pointHoverRadius: 4
+            }]
+        },
+        options: {
+            maintainAspectRatio: false,
+            scales: {
+                x: { grid: { display: false } },
+                y: { display: false, min: 65, max: 90 }
+            },
+            plugins: {
+                legend: { display: false },
+                datalabels: {
+                    color: '#111',
+                    font: { weight: 'bold', size: 9 },
+                    anchor: 'end',
+                    align: 'top',
+                    offset: 4,
+                    formatter: v => v.toFixed(2).replace('.', ',') + '%',
+                    clip: false // Regra Contratual: não cortar labels no topo
+                }
+            },
+            layout: { padding: { top: 25, left: 15, right: 15 } }
+        }
+    });
+}
+</script>
+</body>
+</html>
